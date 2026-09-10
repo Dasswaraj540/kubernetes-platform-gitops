@@ -223,7 +223,7 @@ flowchart LR
 | 3 | Build | `./mvnw -B -ntp -DskipTests package` | Compilation fails |
 | 4 | Unit tests | `./mvnw -B -ntp test` | Any test fails |
 | 5 | Static analysis | SpotBugs (`./mvnw -DskipTests verify -Pstatic-analysis`) | Quality gate not met |
-| 6 | Dependency / security scan | Trivy filesystem scan of `app/target/platform-api.jar` (ignore list `security/dependencies/.trivyignore`) | HIGH/CRITICAL with a fix, unignored |
+| 6 | Dependency / security scan | `dependency:copy-dependencies` → Trivy filesystem scan of `app/target/deps` (ignore list `security/dependencies/.trivyignore`) | HIGH/CRITICAL with a fix, unignored |
 | 7 | Container image build | `docker build -f docker/Dockerfile app/` | Build error |
 | 8 | Container image scan | Trivy scan of the pushed image — HIGH/CRITICAL, `--ignore-unfixed`, ignore list `security/images/.trivyignore` | HIGH/CRITICAL with a fix, unignored |
 | 9 | Image tagging | Tags `ghcr.io/OWNER/platform-api:<sha>` | — |

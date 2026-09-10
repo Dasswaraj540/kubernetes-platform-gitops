@@ -1,17 +1,19 @@
 # Dependency scanning
 
-Both pipelines scan the built application for known-vulnerable dependencies with Trivy in
-filesystem mode, against the repackaged Spring Boot jar:
+Both pipelines resolve the runtime classpath and scan it with Trivy in filesystem mode:
 
 ```
+./mvnw -q -B -ntp dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/deps
+
 trivy fs --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
   --ignorefile security/dependencies/.trivyignore \
-  app/target/platform-api.jar
+  app/target/deps
 ```
 
-Trivy reads `BOOT-INF/lib/*.jar` inside the fat jar, so it sees the exact runtime
-classpath with resolved versions. A HIGH or CRITICAL finding with an available fix fails
-the build.
+`dependency:copy-dependencies` writes the exact resolved compile+runtime jars to
+`target/deps`; Trivy scans each one. A HIGH or CRITICAL finding with an available fix fails
+the build. (Trivy's `fs` mode does not descend into a repackaged Spring Boot fat jar, so the
+loose dependency directory is scanned instead.)
 
 ## Ignore list
 

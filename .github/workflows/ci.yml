@@ -67,11 +67,15 @@ jobs:
         working-directory: app
         run: ./mvnw -B -ntp -DskipTests verify -Pstatic-analysis
 
+      - name: Collect runtime dependencies
+        working-directory: app
+        run: ./mvnw -q -B -ntp dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/deps
+
       - name: Dependency / security scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
-          scan-ref: app/target/platform-api.jar
+          scan-ref: app/target/deps
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: true
