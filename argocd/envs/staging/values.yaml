@@ -1,0 +1,52 @@
+environment: staging
+
+image:
+  tag: "0000000"
+
+replicaCount: 3
+
+argoRollouts:
+  enabled: true
+  analysis:
+    enabled: true
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi
+
+ingress:
+  host: platform-api.staging.example.com
+  tls:
+    enabled: false
+
+pdb:
+  enabled: true
+  minAvailable: 2
+
+networkPolicy:
+  enabled: true
+
+config:
+  PLATFORM_INFO_ENVIRONMENT: staging
+  PLATFORM_INFO_REGION: eu-west-1
+
+serviceMonitor:
+  enabled: true
+
+prometheusRule:
+  enabled: true
+
+externalSecrets:
+  enabled: false
+
+otel:
+  enabled: false

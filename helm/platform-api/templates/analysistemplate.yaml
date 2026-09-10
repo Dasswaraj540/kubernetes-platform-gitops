@@ -1,0 +1,26 @@
+{{- if and .Values.argoRollouts.enabled .Values.argoRollouts.analysis.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "platform-api.analysisTemplateName" . }}
+  labels:
+    {{- include "platform-api.labels" . | nindent 4 }}
+spec:
+  args:
+    - name: service-name
+    - name: namespace
+      value: {{ .Release.Namespace }}
+  metrics:
+    - name: success-rate
+      interval: {{ .Values.argoRollouts.analysis.intervalSeconds }}s
+      count: {{ .Values.argoRollouts.analysis.count }}
+      failureLimit: {{ .Values.argoRollouts.analysis.failureLimit }}
+      successCondition: result[0] >= {{ .Values.argoRollouts.analysis.successRateThreshold }}
+      provider:
+        prometheus:
+          address: {{ .Values.argoRollouts.analysis.prometheusAddress }}
+          query: >-
+            sum(rate(http_server_requests_seconds_count{namespace="{{ `{{args.namespace}}` }}",service="{{ `{{args.service-name}}` }}",status!~"5.."}[2m]))
+            /
+            sum(rate(http_server_requests_seconds_count{namespace="{{ `{{args.namespace}}` }}",service="{{ `{{args.service-name}}` }}"}[2m]))
+{{- end }}

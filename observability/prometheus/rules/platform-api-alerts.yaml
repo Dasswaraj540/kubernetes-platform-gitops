@@ -1,0 +1,93 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: platform-api
+  namespace: platform-dev
+  labels:
+    app.kubernetes.io/name: platform-api
+    app.kubernetes.io/part-of: platform
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: platform-api.rules
+      rules:
+        - alert: PlatformApiHighErrorRate
+          expr: |
+            100 * (
+              sum(rate(http_server_requests_seconds_count{namespace="platform-dev",service="platform-api",status=~"5.."}[5m]))
+              /
+              sum(rate(http_server_requests_seconds_count{namespace="platform-dev",service="platform-api"}[5m]))
+            ) > 5
+          for: 10m
+          labels:
+            severity: critical
+            app: platform-api
+            namespace: platform-dev
+          annotations:
+            summary: platform-api 5xx error rate above 5% in platform-dev
+            description: The 5xx ratio for platform-api has exceeded 5% for 10 minutes.
+        - alert: PlatformApiHighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(http_server_requests_seconds_bucket{namespace="platform-dev",service="platform-api"}[5m]))
+            ) > 1
+          for: 10m
+          labels:
+            severity: warning
+            app: platform-api
+            namespace: platform-dev
+          annotations:
+            summary: platform-api p95 latency above 1s in platform-dev
+            description: The 95th percentile request latency for platform-api has exceeded 1s for 10 minutes.
+        - alert: PlatformApiPodCrashLooping
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="platform-dev",container="platform-api"}[1h]) > 3
+          for: 15m
+          labels:
+            severity: critical
+            app: platform-api
+            namespace: platform-dev
+          annotations:
+            summary: platform-api pods restarting repeatedly in platform-dev
+            description: A platform-api container has restarted more than 3 times in the last hour.
+        - alert: PlatformApiHighCpu
+          expr: |
+            100 * (
+              sum by (pod) (rate(container_cpu_usage_seconds_total{namespace="platform-dev",container="platform-api"}[5m]))
+              /
+              sum by (pod) (kube_pod_container_resource_limits{namespace="platform-dev",container="platform-api",resource="cpu"})
+            ) > 85
+          for: 15m
+          labels:
+            severity: warning
+            app: platform-api
+            namespace: platform-dev
+          annotations:
+            summary: platform-api CPU usage above 85% of limit in platform-dev
+            description: platform-api CPU usage has stayed above 85% of its limit for 15 minutes.
+        - alert: PlatformApiHighMemory
+          expr: |
+            100 * (
+              sum by (pod) (container_memory_working_set_bytes{namespace="platform-dev",container="platform-api"})
+              /
+              sum by (pod) (kube_pod_container_resource_limits{namespace="platform-dev",container="platform-api",resource="memory"})
+            ) > 85
+          for: 15m
+          labels:
+            severity: warning
+            app: platform-api
+            namespace: platform-dev
+          annotations:
+            summary: platform-api memory usage above 85% of limit in platform-dev
+            description: platform-api working-set memory has stayed above 85% of its limit for 15 minutes.
+        - alert: PlatformApiUnavailableReplicas
+          expr: |
+            kube_deployment_status_replicas_unavailable{namespace="platform-dev",deployment="platform-api"} > 0
+          for: 15m
+          labels:
+            severity: critical
+            app: platform-api
+            namespace: platform-dev
+          annotations:
+            summary: platform-api Deployment has unavailable replicas in platform-dev
+            description: The platform-api Deployment has reported unavailable replicas for 15 minutes.

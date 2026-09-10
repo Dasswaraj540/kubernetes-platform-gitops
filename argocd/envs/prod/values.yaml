@@ -1,0 +1,65 @@
+environment: prod
+
+image:
+  tag: "0000000"
+
+replicaCount: 4
+
+argoRollouts:
+  enabled: true
+  analysis:
+    enabled: true
+  steps:
+    - setWeight: 10
+    - pause:
+        duration: 300
+    - setWeight: 25
+    - pause:
+        duration: 300
+    - setWeight: 50
+    - pause:
+        duration: 300
+    - setWeight: 75
+    - pause:
+        duration: 180
+
+autoscaling:
+  enabled: true
+  minReplicas: 4
+  maxReplicas: 16
+
+resources:
+  requests:
+    cpu: "1"
+    memory: 768Mi
+  limits:
+    cpu: "2"
+    memory: 1Gi
+
+ingress:
+  host: platform-api.example.com
+  tls:
+    enabled: false
+
+pdb:
+  enabled: true
+  minAvailable: "50%"
+
+networkPolicy:
+  enabled: true
+
+config:
+  PLATFORM_INFO_ENVIRONMENT: prod
+  PLATFORM_INFO_REGION: eu-west-1
+
+serviceMonitor:
+  enabled: true
+
+prometheusRule:
+  enabled: true
+
+externalSecrets:
+  enabled: false
+
+otel:
+  enabled: false

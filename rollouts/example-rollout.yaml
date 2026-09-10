@@ -1,0 +1,77 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: platform-api-rollout-example
+  labels:
+    app.kubernetes.io/name: platform-api
+    app.kubernetes.io/part-of: platform
+    app.kubernetes.io/component: api
+    platform.io/illustrative: "true"
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: platform-api
+      app.kubernetes.io/instance: platform-api-example
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: platform-api
+        app.kubernetes.io/instance: platform-api-example
+        app.kubernetes.io/component: api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: platform-api
+          image: ghcr.io/OWNER/platform-api:0000000
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: management
+              containerPort: 8081
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: management
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: management
+          resources:
+            requests:
+              cpu: 250m
+              memory: 384Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+  strategy:
+    canary:
+      canaryService: platform-api-canary
+      stableService: platform-api
+      trafficRouting:
+        nginx:
+          stableIngress: platform-api
+      analysis:
+        startingStep: 2
+        templates:
+          - templateName: platform-api-success-rate
+        args:
+          - name: service-name
+            value: platform-api-canary
+          - name: namespace
+            value: platform-staging
+      steps:
+        - setWeight: 20
+        - pause:
+            duration: 120
+        - setWeight: 50
+        - pause:
+            duration: 120
+        - setWeight: 80
+        - pause:
+            duration: 60

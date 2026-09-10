@@ -1,0 +1,189 @@
+environment: dev
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/OWNER/platform-api
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+replicaCount: 2
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  roleArn: ""
+
+rbac:
+  create: true
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 10001
+  capabilities:
+    drop:
+      - ALL
+
+containerPorts:
+  http: 8080
+  management: 8081
+
+service:
+  type: ClusterIP
+  port: 8080
+  managementPort: 8081
+  annotations: {}
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 384Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+probes:
+  startup:
+    path: /actuator/health/readiness
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 30
+  liveness:
+    path: /actuator/health/liveness
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    path: /actuator/health/readiness
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+
+lifecycle:
+  preStopSleepSeconds: 10
+
+terminationGracePeriodSeconds: 40
+
+updateStrategy:
+  maxSurge: 1
+  maxUnavailable: 0
+
+config:
+  PLATFORM_INFO_ENVIRONMENT: dev
+  PLATFORM_INFO_REGION: unknown
+  PLATFORM_ITEMS_SEED_COUNT: "5"
+  PLATFORM_ITEMS_MAX_PAGE_SIZE: "50"
+
+extraEnv: []
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior: {}
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+topologySpread:
+  enabled: true
+  maxSkew: 1
+  whenUnsatisfiable: ScheduleAnyway
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  host: platform-api.dev.example.com
+  path: /
+  pathType: Prefix
+  tls:
+    enabled: false
+    secretName: platform-api-tls
+
+networkPolicy:
+  enabled: true
+  ingressControllerNamespace: ingress-nginx
+  monitoringNamespace: monitoring
+  dnsNamespace: kube-system
+  extraEgress: []
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+  path: /actuator/prometheus
+  additionalLabels: {}
+
+prometheusRule:
+  enabled: true
+  additionalLabels: {}
+  thresholds:
+    errorRatePercent: 5
+    latencyP95Seconds: 1
+    cpuPercent: 85
+    memoryPercent: 85
+    restartsPerHour: 3
+
+argoRollouts:
+  enabled: false
+  steps:
+    - setWeight: 20
+    - pause:
+        duration: 120
+    - setWeight: 50
+    - pause:
+        duration: 120
+    - setWeight: 80
+    - pause:
+        duration: 60
+  analysis:
+    enabled: true
+    prometheusAddress: http://prometheus-operated.monitoring.svc:9090
+    successRateThreshold: "0.95"
+    intervalSeconds: 60
+    count: 3
+    failureLimit: 1
+
+externalSecrets:
+  enabled: false
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  data: []
+
+otel:
+  enabled: false
+  endpoint: http://otel-collector.observability.svc:4317
+  samplerArg: "0.1"
+
+extraVolumes: []
+extraVolumeMounts: []

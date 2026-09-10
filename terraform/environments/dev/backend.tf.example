@@ -1,0 +1,10 @@
+terraform {
+  backend "s3" {
+    bucket         = "platform-tfstate-REPLACE_WITH_UNIQUE_SUFFIX"
+    key            = "platform/dev/terraform.tfstate"
+    region         = "eu-west-1"
+    dynamodb_table = "platform-tfstate-locks"
+    encrypt        = true
+    kms_key_id     = "alias/platform-tfstate"
+  }
+}

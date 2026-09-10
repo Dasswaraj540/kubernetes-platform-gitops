@@ -1,0 +1,50 @@
+{{- if .Values.argoRollouts.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "platform-api.fullname" . }}
+  labels:
+    {{- include "platform-api.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      {{- include "platform-api.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "platform-api.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "platform-api.podSpec" . | nindent 6 }}
+  strategy:
+    canary:
+      canaryService: {{ include "platform-api.canaryServiceName" . }}
+      stableService: {{ include "platform-api.stableServiceName" . }}
+      trafficRouting:
+        nginx:
+          stableIngress: {{ include "platform-api.fullname" . }}
+      {{- if .Values.argoRollouts.analysis.enabled }}
+      analysis:
+        startingStep: 2
+        templates:
+          - templateName: {{ include "platform-api.analysisTemplateName" . }}
+        args:
+          - name: service-name
+            value: {{ include "platform-api.canaryServiceName" . }}
+          - name: namespace
+            value: {{ .Release.Namespace }}
+      {{- end }}
+      steps:
+        {{- toYaml .Values.argoRollouts.steps | nindent 8 }}
+{{- end }}

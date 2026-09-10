@@ -1,0 +1,28 @@
+scrape_configs:
+  - job_name: platform-api
+    metrics_path: /actuator/prometheus
+    scheme: http
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - platform-dev
+            - platform-staging
+            - platform-prod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_label_app_kubernetes_io_name]
+        action: keep
+        regex: platform-api
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: management
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_service_name]
+        target_label: service
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+        target_label: instance

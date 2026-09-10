@@ -1,0 +1,26 @@
+platform-api {{ .Chart.AppVersion }} ({{ include "platform-api.environment" . }})
+
+Release:    {{ .Release.Name }}
+Namespace:  {{ .Release.Namespace }}
+Image:      {{ include "platform-api.image" . }}
+Workload:   {{ if .Values.argoRollouts.enabled }}Argo Rollout (canary){{ else }}Deployment (rolling update){{ end }}
+
+Public API is served on port {{ .Values.service.port }}:
+  GET /api/v1/health
+  GET /api/v1/info
+  GET /api/v1/items
+
+Probes and Prometheus metrics are served on port {{ .Values.service.managementPort }}:
+  /actuator/health/liveness
+  /actuator/health/readiness
+  {{ .Values.serviceMonitor.path }}
+
+Check status:
+  kubectl -n {{ .Release.Namespace }} get {{ if .Values.argoRollouts.enabled }}rollout{{ else }}deployment{{ end }} {{ include "platform-api.fullname" . }}
+{{- if .Values.argoRollouts.enabled }}
+  kubectl argo rollouts -n {{ .Release.Namespace }} get rollout {{ include "platform-api.fullname" . }}
+{{- end }}
+{{- if .Values.ingress.enabled }}
+
+Ingress host: {{ if .Values.ingress.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.ingress.host }}{{ .Values.ingress.path }}
+{{- end }}

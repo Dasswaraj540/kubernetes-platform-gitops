@@ -1,0 +1,111 @@
+{{- if .Values.prometheusRule.enabled }}
+{{- $ns := .Release.Namespace }}
+{{- $t := .Values.prometheusRule.thresholds }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "platform-api.fullname" . }}
+  labels:
+    {{- include "platform-api.labels" . | nindent 4 }}
+    {{- with .Values.prometheusRule.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: platform-api.rules
+      rules:
+        - alert: PlatformApiHighErrorRate
+          expr: |
+            100 * (
+              sum(rate(http_server_requests_seconds_count{namespace="{{ $ns }}",service="{{ include "platform-api.stableServiceName" . }}",status=~"5.."}[5m]))
+              /
+              sum(rate(http_server_requests_seconds_count{namespace="{{ $ns }}",service="{{ include "platform-api.stableServiceName" . }}"}[5m]))
+            ) > {{ $t.errorRatePercent }}
+          for: 10m
+          labels:
+            severity: critical
+            app: platform-api
+            namespace: {{ $ns }}
+          annotations:
+            summary: platform-api 5xx error rate above {{ $t.errorRatePercent }}% in {{ $ns }}
+            description: The 5xx ratio for platform-api has exceeded {{ $t.errorRatePercent }}% for 10 minutes.
+        - alert: PlatformApiHighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(http_server_requests_seconds_bucket{namespace="{{ $ns }}",service="{{ include "platform-api.stableServiceName" . }}"}[5m]))
+            ) > {{ $t.latencyP95Seconds }}
+          for: 10m
+          labels:
+            severity: warning
+            app: platform-api
+            namespace: {{ $ns }}
+          annotations:
+            summary: platform-api p95 latency above {{ $t.latencyP95Seconds }}s in {{ $ns }}
+            description: The 95th percentile request latency for platform-api has exceeded {{ $t.latencyP95Seconds }}s for 10 minutes.
+        - alert: PlatformApiPodCrashLooping
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="{{ $ns }}",container="{{ include "platform-api.name" . }}"}[1h]) > {{ $t.restartsPerHour }}
+          for: 15m
+          labels:
+            severity: critical
+            app: platform-api
+            namespace: {{ $ns }}
+          annotations:
+            summary: platform-api pods restarting repeatedly in {{ $ns }}
+            description: A platform-api container has restarted more than {{ $t.restartsPerHour }} times in the last hour.
+        - alert: PlatformApiHighCpu
+          expr: |
+            100 * (
+              sum by (pod) (rate(container_cpu_usage_seconds_total{namespace="{{ $ns }}",container="{{ include "platform-api.name" . }}"}[5m]))
+              /
+              sum by (pod) (kube_pod_container_resource_limits{namespace="{{ $ns }}",container="{{ include "platform-api.name" . }}",resource="cpu"})
+            ) > {{ $t.cpuPercent }}
+          for: 15m
+          labels:
+            severity: warning
+            app: platform-api
+            namespace: {{ $ns }}
+          annotations:
+            summary: platform-api CPU usage above {{ $t.cpuPercent }}% of limit in {{ $ns }}
+            description: platform-api CPU usage has stayed above {{ $t.cpuPercent }}% of its limit for 15 minutes.
+        - alert: PlatformApiHighMemory
+          expr: |
+            100 * (
+              sum by (pod) (container_memory_working_set_bytes{namespace="{{ $ns }}",container="{{ include "platform-api.name" . }}"})
+              /
+              sum by (pod) (kube_pod_container_resource_limits{namespace="{{ $ns }}",container="{{ include "platform-api.name" . }}",resource="memory"})
+            ) > {{ $t.memoryPercent }}
+          for: 15m
+          labels:
+            severity: warning
+            app: platform-api
+            namespace: {{ $ns }}
+          annotations:
+            summary: platform-api memory usage above {{ $t.memoryPercent }}% of limit in {{ $ns }}
+            description: platform-api working-set memory has stayed above {{ $t.memoryPercent }}% of its limit for 15 minutes.
+        {{- if .Values.argoRollouts.enabled }}
+        - alert: PlatformApiUnavailableReplicas
+          expr: |
+            rollout_info_replicas_unavailable{namespace="{{ $ns }}",name="{{ include "platform-api.fullname" . }}"} > 0
+          for: 15m
+          labels:
+            severity: critical
+            app: platform-api
+            namespace: {{ $ns }}
+          annotations:
+            summary: platform-api Rollout has unavailable replicas in {{ $ns }}
+            description: The platform-api Rollout has reported unavailable replicas for 15 minutes.
+        {{- else }}
+        - alert: PlatformApiUnavailableReplicas
+          expr: |
+            kube_deployment_status_replicas_unavailable{namespace="{{ $ns }}",deployment="{{ include "platform-api.fullname" . }}"} > 0
+          for: 15m
+          labels:
+            severity: critical
+            app: platform-api
+            namespace: {{ $ns }}
+          annotations:
+            summary: platform-api Deployment has unavailable replicas in {{ $ns }}
+            description: The platform-api Deployment has reported unavailable replicas for 15 minutes.
+        {{- end }}
+{{- end }}

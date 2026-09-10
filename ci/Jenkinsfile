@@ -1,0 +1,141 @@
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '30'))
+        timeout(time: 30, unit: 'MINUTES')
+    }
+
+    environment {
+        REGISTRY       = 'ghcr.io'
+        IMAGE_NAME     = 'platform-api'
+        IMAGE_REPO     = "${REGISTRY}/OWNER/${IMAGE_NAME}"
+        GITOPS_ENV     = 'dev'
+        HELM_CHART_DIR = 'helm/platform-api'
+        VALUES_FILE    = "argocd/envs/${GITOPS_ENV}/values.yaml"
+        REPO_URL       = 'https://github.com/OWNER/kubernetes-platform-gitops.git'
+        REGISTRY_CREDENTIALS = credentials('platform-registry')
+        GITOPS_TOKEN         = credentials('platform-gitops-token')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script {
+                    env.IMAGE_TAG = sh(script: 'git rev-parse --short=7 HEAD', returnStdout: true).trim()
+                }
+                echo "platform-api build -> ${IMAGE_REPO}:${IMAGE_TAG}"
+            }
+        }
+
+        stage('Dependency resolution') {
+            steps {
+                dir('app') {
+                    sh 'chmod +x mvnw && ./mvnw -B -ntp dependency:go-offline'
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('app') {
+                    sh './mvnw -B -ntp -DskipTests clean package'
+                }
+            }
+        }
+
+        stage('Unit tests') {
+            steps {
+                dir('app') {
+                    sh './mvnw -B -ntp test'
+                }
+            }
+            post {
+                always {
+                    junit testResults: 'app/target/surefire-reports/*.xml', allowEmptyResults: false
+                }
+            }
+        }
+
+        stage('Static analysis') {
+            steps {
+                dir('app') {
+                    sh './mvnw -B -ntp -DskipTests verify -Pstatic-analysis'
+                }
+            }
+        }
+
+        stage('Dependency / security scan') {
+            steps {
+                dir('app') {
+                    sh '''
+                        ./mvnw -B -ntp org.owasp:dependency-check-maven:check \
+                          -DfailBuildOnCVSS=7 \
+                          -Dformats=HTML,SARIF \
+                          -DsuppressionFiles=../security/dependencies/dependency-check-suppressions.xml
+                    '''
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'app/target/dependency-check-report.*', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Container image build') {
+            steps {
+                sh 'docker build -f docker/Dockerfile --build-arg GIT_SHA=${IMAGE_TAG} -t ${IMAGE_REPO}:${IMAGE_TAG} app'
+            }
+        }
+
+        stage('Container image scan') {
+            steps {
+                sh 'bash scripts/image-scan.sh ${IMAGE_REPO}:${IMAGE_TAG}'
+            }
+        }
+
+        stage('Image tagging') {
+            steps {
+                sh '''
+                    docker tag ${IMAGE_REPO}:${IMAGE_TAG} ${IMAGE_REPO}:build-${BUILD_NUMBER}
+                    docker image inspect ${IMAGE_REPO}:${IMAGE_TAG} --format '{{ index .RepoTags 0 }}'
+                '''
+            }
+        }
+
+        stage('Registry publishing') {
+            steps {
+                sh '''
+                    echo "${REGISTRY_CREDENTIALS_PSW}" | docker login ${REGISTRY} -u "${REGISTRY_CREDENTIALS_USR}" --password-stdin
+                    docker push ${IMAGE_REPO}:${IMAGE_TAG}
+                    docker logout ${REGISTRY}
+                '''
+            }
+        }
+
+        stage('GitOps update') {
+            when { branch 'main' }
+            steps {
+                sh '''
+                    git config user.email "platform-ci@users.noreply.github.com"
+                    git config user.name "platform-ci"
+                    IMAGE_TAG=${IMAGE_TAG} GITOPS_ENV=${GITOPS_ENV} VALUES_FILE=${VALUES_FILE} bash scripts/update-gitops-tag.sh
+                    git add ${VALUES_FILE}
+                    git commit -m "ci: platform-api ${GITOPS_ENV} -> ${IMAGE_TAG}" || exit 0
+                    git push https://x-access-token:${GITOPS_TOKEN}@github.com/OWNER/kubernetes-platform-gitops.git HEAD:main
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker image rm ${IMAGE_REPO}:${IMAGE_TAG} ${IMAGE_REPO}:build-${BUILD_NUMBER} || true'
+            cleanWs()
+        }
+    }
+}

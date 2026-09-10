@@ -1,0 +1,18 @@
+apiVersion: v2
+name: platform-api
+description: Delivery chart for the platform-api reference workload
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.28.0-0"
+home: https://github.com/OWNER/kubernetes-platform-gitops
+sources:
+  - https://github.com/OWNER/kubernetes-platform-gitops
+maintainers:
+  - name: kubernetes-platform-gitops contributors
+keywords:
+  - platform
+  - gitops
+  - argo-rollouts
+annotations:
+  category: ApplicationDelivery
