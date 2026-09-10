@@ -70,19 +70,11 @@ pipeline {
 
         stage('Dependency / security scan') {
             steps {
-                dir('app') {
-                    sh '''
-                        ./mvnw -B -ntp org.owasp:dependency-check-maven:check \
-                          -DfailBuildOnCVSS=7 \
-                          -Dformats=HTML,SARIF \
-                          -DsuppressionFiles=../security/dependencies/dependency-check-suppressions.xml
-                    '''
-                }
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'app/target/dependency-check-report.*', allowEmptyArchive: true
-                }
+                sh '''
+                    trivy fs --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+                      --exit-code 1 --ignorefile security/dependencies/.trivyignore \
+                      app/target/platform-api.jar
+                '''
             }
         }
 

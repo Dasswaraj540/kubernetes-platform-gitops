@@ -51,8 +51,8 @@ kubeconfig
 !.env.example
 
 .scannerwork/
-dependency-check-report.*
 trivy-results.*
+trivy-deps.*
 coverage/
 *.exec
 security/images/.trivyignore

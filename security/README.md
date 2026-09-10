@@ -13,7 +13,7 @@ repository.
 | AWS IAM | `terraform/modules/iam`, `iam/least-privilege.md`, `iam/platform-api-secrets-policy.json` | IRSA scoped to one ServiceAccount; Secrets Manager read scoped to one prefix; GitHub Actions via OIDC, no static keys |
 | Secrets | chart `externalsecret.yaml`, `secrets/external-secrets-example.yaml`, `secrets/sops.md` | values pulled from AWS Secrets Manager into `platform-api-secrets`; SOPS documented for encrypted-in-Git manifests; no secret values committed |
 | Image scanning | `images/trivy.yaml`, `scripts/image-scan.sh`, both pipelines | Trivy scan on every build; HIGH/CRITICAL fail the build unless explicitly, temporarily ignored |
-| Dependency scanning | `dependencies/`, both pipelines | OWASP Dependency-Check; `failBuildOnCVSS=7`; suppressions are tracked and reviewed |
+| Dependency scanning | `dependencies/`, both pipelines | Trivy filesystem scan of the built jar; fail on HIGH/CRITICAL; the `.trivyignore` list is tracked and reviewed |
 | Encryption | `terraform/modules/kms`, `eks`, `ecr` | KMS CMK for ECR at rest and EKS secrets envelope encryption; S3 state SSE-KMS |
 
 ## Principles
@@ -21,6 +21,6 @@ repository.
 1. Least privilege everywhere — IAM, RBAC, NetworkPolicy, ECR pull, CI tokens.
 2. No long-lived cloud credentials — IRSA for workloads, OIDC for CI.
 3. Secrets never in Git — reference, never inline.
-4. Fail the pipeline on unreviewed HIGH/CRITICAL findings; every suppression has an owner and
-   an expiry.
+4. Fail the pipeline on unreviewed HIGH/CRITICAL findings; every ignore-list entry has an
+   owner and a review date.
 5. Immutable, minimal, non-root images; the runtime filesystem is read-only.

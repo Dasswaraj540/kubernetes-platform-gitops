@@ -1,34 +1,32 @@
 # Dependency scanning
 
-Both pipelines run OWASP Dependency-Check against the Maven build:
+Both pipelines scan the built application for known-vulnerable dependencies with Trivy in
+filesystem mode, against the repackaged Spring Boot jar:
 
 ```
-./mvnw -B -ntp org.owasp:dependency-check-maven:check \
-  -DfailBuildOnCVSS=7 \
-  -Dformats=HTML,SARIF \
-  -DsuppressionFiles=../security/dependencies/dependency-check-suppressions.xml
+trivy fs --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+  --ignorefile security/dependencies/.trivyignore \
+  app/target/platform-api.jar
 ```
 
-- `failBuildOnCVSS=7` fails the build on any unsuppressed finding with CVSS ≥ 7.
-- Reports (`app/target/dependency-check-report.*`) are archived by the pipeline.
+Trivy reads `BOOT-INF/lib/*.jar` inside the fat jar, so it sees the exact runtime
+classpath with resolved versions. A HIGH or CRITICAL finding with an available fix fails
+the build.
 
-## Suppressions
+## Ignore list
 
-`dependency-check-suppressions.xml` is the only place findings are silenced, and it starts
+`.trivyignore` in this directory is the only place a finding is silenced, and it starts
 empty. Add an entry only with:
 
-- a specific `packageUrl` or `cve` (never a blanket suppress),
-- a `<notes>` line naming the tracking issue and a review date,
-- the narrowest scope that works.
+- the specific vulnerability ID (`CVE-…` or `GHSA-…`), never a broad match,
+- a trailing comment naming the tracking issue and a review date,
+- the shortest-lived exception that works.
 
-Example shape:
+Entries whose review date has passed should fail review. Prefer bumping the offending
+dependency (usually a Spring Boot BOM bump) over adding an entry.
 
-```xml
-<suppress until="2026-12-01Z">
-  <notes>PLAT-123 - transitive via X, no fixed release yet; re-check monthly.</notes>
-  <packageUrl regex="true">^pkg:maven/com\.example/thing@.*$</packageUrl>
-  <cve>CVE-2025-00000</cve>
-</suppress>
-```
+## Why not OWASP Dependency-Check
 
-Suppressions with a past `until` date should fail review.
+Recent `dependency-check-maven` releases require an NVD API key and will not run without
+one, which would make the pipeline depend on an externally provisioned secret. Trivy's
+vulnerability database is public and needs no key.

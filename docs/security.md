@@ -8,7 +8,7 @@ The control-by-control detail and example files are in
 | Asset | Main threats | Primary controls |
 |---|---|---|
 | The running container | remote code execution, privilege escalation, container escape | non-root, read-only rootfs, drop all caps, `seccomp: RuntimeDefault`, PSA `restricted`, no shell in the runtime image |
-| The image supply chain | vulnerable base/deps, tampered image, secret baked in | multi-stage build, Trivy scan (fail on HIGH/CRITICAL), OWASP Dependency-Check (fail CVSS ≥ 7), immutable SHA tags, `.dockerignore` |
+| The image supply chain | vulnerable base/deps, tampered image, secret baked in | multi-stage build, Trivy image scan and dependency (filesystem) scan — both fail on HIGH/CRITICAL, immutable SHA tags, `.dockerignore` |
 | Cluster blast radius | one compromised pod reaching others or the API | namespaced RBAC (own ConfigMap only), default-deny NetworkPolicy + minimal allows, ResourceQuota/LimitRange |
 | Cloud blast radius | stolen pod identity, over-broad CI credentials | IRSA scoped to one ServiceAccount + one Secrets Manager prefix; CI via GitHub OIDC, no static keys |
 | Secrets | plaintext in Git, in image, or in logs | External Secrets Operator → Secrets Manager; SOPS alternative; nothing secret committed |

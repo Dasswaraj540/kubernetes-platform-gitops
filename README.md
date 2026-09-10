@@ -170,7 +170,7 @@ The AWS substrate (left, dashed) is defined in the Terraform modules under `terr
 | Tracing | OpenTelemetry | Java agent + Collector config; opt-in |
 | Ingress | ingress-nginx | ALB documented as the AWS alternative |
 | Secrets | External Secrets Operator → AWS Secrets Manager | Plus a SOPS note; no secret values in Git |
-| Supply chain | Trivy (image), OWASP Dependency-Check (deps) | Wired into both pipelines |
+| Supply chain | Trivy — container image scan and dependency (filesystem) scan | Wired into both pipelines |
 
 ---
 
@@ -223,7 +223,7 @@ flowchart LR
 | 3 | Build | `./mvnw -B -ntp -DskipTests package` | Compilation fails |
 | 4 | Unit tests | `./mvnw -B -ntp test` | Any test fails |
 | 5 | Static analysis | SpotBugs (`./mvnw -DskipTests verify -Pstatic-analysis`) | Quality gate not met |
-| 6 | Dependency / security scan | OWASP Dependency-Check against `security/dependencies/` suppressions | CVSS ≥ threshold, unsuppressed |
+| 6 | Dependency / security scan | Trivy filesystem scan of `app/target/platform-api.jar` (ignore list `security/dependencies/.trivyignore`) | HIGH/CRITICAL with a fix, unignored |
 | 7 | Container image build | `docker build -f docker/Dockerfile app/` | Build error |
 | 8 | Container image scan | Trivy against `security/images/trivy.yaml` policy | HIGH/CRITICAL, unignored |
 | 9 | Image tagging | Tags `ghcr.io/OWNER/platform-api:<sha>` | — |
@@ -368,7 +368,7 @@ pipeline:
 | AWS IAM | Least-privilege policies in `terraform/modules/iam`; IRSA maps the `platform-api` ServiceAccount to a role via the cluster OIDC provider; GitHub Actions uses OIDC, not static keys |
 | Secrets | External Secrets Operator pulls from AWS Secrets Manager into `platform-api-secrets`; SOPS documented for encrypted-in-Git manifests; no secret values committed |
 | Supply chain — images | Trivy scan in both pipelines; policy in `security/images/trivy.yaml` |
-| Supply chain — dependencies | OWASP Dependency-Check in both pipelines; suppressions in `security/dependencies/` |
+| Supply chain — dependencies | Trivy filesystem scan of the built jar in both pipelines; ignore list in `security/dependencies/.trivyignore` |
 | Encryption | KMS customer-managed key (Terraform `kms` module) for ECR at rest and EKS secrets envelope encryption; S3 state bucket SSE |
 
 See [`security/README.md`](security/README.md) and [`docs/security.md`](docs/security.md).

@@ -1,0 +1,4 @@
+# Dependency-scan ignore list for the CI "Dependency / security scan" stage.
+# One vulnerability ID per line. Every entry needs a tracking issue and an
+# expiry date in the trailing comment; entries past their date fail review.
+# CVE-2025-00000  # PLAT-000, upstream fix in <lib> <version>, review by 2026-01-01
