@@ -1,18 +1,13 @@
 environment: dev
-
 image:
-  tag: "0000000"
-
+  tag: "77f0ae0"
 replicaCount: 2
-
 argoRollouts:
   enabled: false
-
 autoscaling:
   enabled: true
   minReplicas: 2
   maxReplicas: 6
-
 resources:
   requests:
     cpu: 250m
@@ -20,31 +15,23 @@ resources:
   limits:
     cpu: "1"
     memory: 512Mi
-
 ingress:
   host: platform-api.dev.example.com
   tls:
     enabled: false
-
 pdb:
   enabled: true
   minAvailable: 1
-
 networkPolicy:
   enabled: true
-
 config:
   PLATFORM_INFO_ENVIRONMENT: dev
   PLATFORM_INFO_REGION: eu-west-1
-
 serviceMonitor:
   enabled: true
-
 prometheusRule:
   enabled: true
-
 externalSecrets:
   enabled: false
-
 otel:
   enabled: false
