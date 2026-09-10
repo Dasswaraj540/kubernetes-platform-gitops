@@ -28,5 +28,12 @@ public class ItemsController {
     }
 
     public record ItemsResponse(int count, int total, List<Item> items) {
+        public ItemsResponse {
+            items = items == null ? List.of() : List.copyOf(items);
+        }
+
+        public List<Item> items() {
+            return List.copyOf(items);
+        }
     }
 }

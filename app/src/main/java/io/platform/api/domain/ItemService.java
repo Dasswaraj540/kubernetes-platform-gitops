@@ -22,7 +22,7 @@ public class ItemService {
     }
 
     public List<Item> findAll() {
-        return items;
+        return List.copyOf(items);
     }
 
     public List<Item> findPage(int requestedSize) {

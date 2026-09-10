@@ -10,4 +10,12 @@ public record ApiError(
         String message,
         String path,
         List<String> details) {
+
+    public ApiError {
+        details = details == null ? List.of() : List.copyOf(details);
+    }
+
+    public List<String> details() {
+        return List.copyOf(details);
+    }
 }
