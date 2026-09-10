@@ -15,7 +15,7 @@ two cannot drift on the parts that matter (image scan, GitOps tag bump).
 | 5 | Static analysis | `./mvnw -B -ntp -DskipTests verify -Pstatic-analysis` (SpotBugs) |
 | 6 | Dependency / security scan | `trivy fs` over `app/target/platform-api.jar` — HIGH/CRITICAL, `--ignore-unfixed`, ignore list `security/dependencies/.trivyignore` |
 | 7 | Container image build | `docker build -f docker/Dockerfile --build-arg GIT_SHA=$IMAGE_TAG -t $IMAGE_REPO:$IMAGE_TAG app` |
-| 8 | Container image scan | `scripts/image-scan.sh $IMAGE_REPO:$IMAGE_TAG` (Trivy, `security/images/trivy.yaml`) |
+| 8 | Container image scan | `scripts/image-scan.sh $IMAGE_REPO:$IMAGE_TAG` — Trivy, HIGH/CRITICAL, `--ignore-unfixed`, ignore list `security/images/.trivyignore` |
 | 9 | Image tagging | `$IMAGE_REPO:$IMAGE_TAG` (+ a `build-<n>` convenience tag in Jenkins) |
 | 10 | Registry publishing | `docker push $IMAGE_REPO:$IMAGE_TAG` to `ghcr.io` |
 | 11 | GitOps update | `scripts/update-gitops-tag.sh` writes `.image.tag` in `argocd/envs/dev/values.yaml`, commits to `main` |

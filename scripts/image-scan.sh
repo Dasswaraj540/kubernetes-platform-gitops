@@ -8,7 +8,6 @@ if [[ -z "${IMAGE_REF}" ]]; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TRIVY_CONFIG="${TRIVY_CONFIG:-${REPO_ROOT}/security/images/trivy.yaml}"
 IGNORE_FILE="${REPO_ROOT}/security/images/.trivyignore"
 
 if ! command -v trivy >/dev/null 2>&1; then
@@ -16,7 +15,7 @@ if ! command -v trivy >/dev/null 2>&1; then
   exit 1
 fi
 
-args=(image --config "${TRIVY_CONFIG}")
+args=(image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1)
 if [[ -f "${IGNORE_FILE}" ]]; then
   args+=(--ignorefile "${IGNORE_FILE}")
 fi

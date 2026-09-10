@@ -1,3 +1,0 @@
-# copy to security/images/.trivyignore (git-ignored). one CVE id per line.
-# every entry needs a tracking issue and an expiry date in the trailing comment.
-# CVE-2025-00000  # PLAT-123, base image fix expected 2026-11, review by 2026-12-01

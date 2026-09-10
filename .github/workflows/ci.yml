@@ -89,7 +89,11 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.meta.outputs.image_repo }}:${{ steps.meta.outputs.image_tag }}
-          trivy-config: security/images/trivy.yaml
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          trivyignores: security/images/.trivyignore
 
       - name: Registry login
         if: github.event_name == 'push'

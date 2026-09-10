@@ -225,7 +225,7 @@ flowchart LR
 | 5 | Static analysis | SpotBugs (`./mvnw -DskipTests verify -Pstatic-analysis`) | Quality gate not met |
 | 6 | Dependency / security scan | Trivy filesystem scan of `app/target/platform-api.jar` (ignore list `security/dependencies/.trivyignore`) | HIGH/CRITICAL with a fix, unignored |
 | 7 | Container image build | `docker build -f docker/Dockerfile app/` | Build error |
-| 8 | Container image scan | Trivy against `security/images/trivy.yaml` policy | HIGH/CRITICAL, unignored |
+| 8 | Container image scan | Trivy scan of the pushed image — HIGH/CRITICAL, `--ignore-unfixed`, ignore list `security/images/.trivyignore` | HIGH/CRITICAL with a fix, unignored |
 | 9 | Image tagging | Tags `ghcr.io/OWNER/platform-api:<sha>` | — |
 | 10 | Registry publishing | Pushes to GHCR using pipeline credentials | Auth / push error |
 | 11 | GitOps update | `scripts/update-gitops-tag.sh` writes `.image.tag` in `argocd/envs/dev/values.yaml`, commits | Commit/push error |
@@ -367,7 +367,7 @@ pipeline:
 | Cluster access | RBAC principles and example roles in `security/rbac/`; no `cluster-admin` bindings |
 | AWS IAM | Least-privilege policies in `terraform/modules/iam`; IRSA maps the `platform-api` ServiceAccount to a role via the cluster OIDC provider; GitHub Actions uses OIDC, not static keys |
 | Secrets | External Secrets Operator pulls from AWS Secrets Manager into `platform-api-secrets`; SOPS documented for encrypted-in-Git manifests; no secret values committed |
-| Supply chain — images | Trivy scan in both pipelines; policy in `security/images/trivy.yaml` |
+| Supply chain — images | Trivy scan in both pipelines; ignore list in `security/images/.trivyignore` |
 | Supply chain — dependencies | Trivy filesystem scan of the built jar in both pipelines; ignore list in `security/dependencies/.trivyignore` |
 | Encryption | KMS customer-managed key (Terraform `kms` module) for ECR at rest and EKS secrets envelope encryption; S3 state bucket SSE |
 

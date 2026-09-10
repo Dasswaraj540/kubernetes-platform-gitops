@@ -1,0 +1,6 @@
+# Image-scan ignore list for the CI "Container image scan" stage.
+# One vulnerability ID per line. Every entry needs a tracking issue and a
+# review date in the trailing comment; entries past their date fail review.
+# Use this only for base-image CVEs with no upstream fix yet — prefer bumping
+# the base image or dependency instead.
+# CVE-2025-00000  # PLAT-000, temurin base lag, fixed upstream in <tag>, review by 2026-01-01

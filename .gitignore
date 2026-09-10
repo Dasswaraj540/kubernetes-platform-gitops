@@ -55,6 +55,5 @@ trivy-results.*
 trivy-deps.*
 coverage/
 *.exec
-security/images/.trivyignore
 
 .claude/
